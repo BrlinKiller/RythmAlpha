@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rhythm Game Fixed</title>
+  <style>
+    :root {
+      --game-image: url("https://t3.ftcdn.net/jpg/06/34/47/90/240_F_634479097_8OHalwLrsZ33B1iWNhtje6wkKQXIs31m.jpg");
+      --Background-image: url("https://i.redd.it/nvi8xoj2cx9e1.png")
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-image: var(--Background-image);
+      background-position: center;
+      background-size: cover;
+      font-family: sans-serif;
+    }
+
+    #gameContainer {
+      position: relative;
+      width: 400px;
+      height: 550px;
+      background-color: #ff4ed353;
+      overflow: hidden;
+      border: 3px solid #00c8ff;
+      border-radius: 10px;
+    }
+
+    .note {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background-color: #FF5722;
+      background-image: var(--game-image);
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      border-radius: 50%;
+    }
+
+    .hitZone {
+      position: absolute;
+      bottom: 90px;
+      width: 100%;
+      height: 40px;
+      border-top: 2px solid #ffffff00;
+      pointer-events: none;
+    }
+
+    .lane {
+      position: absolute;
+      bottom: 0;
+      width: 25%;
+      height: 100%;
+      text-align: center;
+      border-left: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .lane.d { left: 0%; }
+    .lane.f { left: 25%; }
+    .lane.j { left: 50%; }
+    .lane.k { left: 75%; }
+
+    .keyLabel {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 30px;
+      height: 30px;
+      background-color: #981e8a;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 30px;
+      border-radius: 5px;
+      box-shadow: 0 0 4px #360045;
+      transition: 0.1s ease;
+    }
+
+    .keyLabel.active {
+      background-color: #22f0ff;
+      box-shadow: 0 0 15px #22f0ff;
+      transform: translateX(-50%) scale(1.1);
+    }
+
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ffff;
+      font-family: monospace;
+      font-size: 20px;
+      font-style: italic;
+    }
+
+    .feedback {
+      position: absolute;
+      left: 50%;
+      bottom: 120px;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 24px;
+      font-weight: bold;
+      opacity: 0;
+      animation: pop 0.6s ease-out;
+      pointer-events: none;
+      font-family: monospace;
+      font-style: italic;
+    }
+
+    @keyframes pop {
+      0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      30% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    }
+    .hitZone {
+  position: absolute;
+  bottom: 90px; /* This is your actual hit Y */
+  width: 100%;
+  height: 50px; /* Match max hit buffer (50px) */
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hitZone::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: rgb(0, 225, 255); /* The hit line */
+  z-index: 2;
+}
+
+.hitRange {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top,
+    rgba(0, 217, 255, 0.852) 0%,       /* 0px = Miss */
+    rgba(0, 217, 255, 0.498) 50%,    /* 25px = Ok */
+    rgba(0, 217, 255, 0.317) 75%,    /* 12.5px = Good */
+    rgba(255, 0, 0, 0) 100%);    /* 0px = Perfect */
+  pointer-events: none;
+  z-index: 0;
+}
+
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="score">Score: 0</div>
+    <div class="hitZone">
+        <div class="hitRange"></div>
+    </div>
+
+    <!-- Lanes in correct order: D F J K -->
+    <div class="lane d">
+      <div class="keyLabel" id="key-d">D</div>
+    </div>
+    <div class="lane f">
+      <div class="keyLabel" id="key-f">F</div>
+    </div>
+    <div class="lane j">
+      <div class="keyLabel" id="key-j">J</div>
+    </div>
+    <div class="lane k">
+      <div class="keyLabel" id="key-k">K</div>
+    </div>
+  </div>
+
+  <audio id="music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+
+  <script>
+  const gameContainer = document.getElementById('gameContainer');
+  const scoreDisplay = document.getElementById('score');
+  const music = document.getElementById('music');
+
+  const keyMap = {
+    'd': 0,
+    'f': 1,
+    'j': 2,
+    'k': 3
+  };
+
+  const laneWidth = gameContainer.clientWidth / 4;
+  const containerHeight = gameContainer.clientHeight;
+  const hitY = containerHeight - 90;
+  const noteFallDuration = 2000;
+  const spawnOffset = noteFallDuration;
+  const activeNotes = [];
+  let score = 0;
+
+  const keyCooldowns = {};
+
+  function showFeedback(text, color = "#fff") {
+    const fb = document.createElement("div");
+    fb.className = "feedback";
+    fb.innerText = text;
+    fb.style.color = color;
+    gameContainer.appendChild(fb);
+    setTimeout(() => fb.remove(), 600);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (!(key in keyMap)) return;
+    if (keyCooldowns[key]) return;
+
+    keyCooldowns[key] = true;
+    const btn = document.getElementById('key-' + key);
+    if (btn) btn.classList.add('active');
+
+    const result = checkHit(keyMap[key]);
+
+    if (!result) showFeedback("Miss", "#ff0048");
+
+    setTimeout(() => {
+      keyCooldowns[key] = false;
+      if (btn) btn.classList.remove('active');
+    }, 150);
+  });
+
+  function checkHit(laneIndex) {
+  for (let i = 0; i < activeNotes.length; i++) {
+    const note = activeNotes[i];
+    const noteLane = parseInt(note.dataset.lane);
+    const noteTop = parseFloat(note.style.top);
+    const distance = Math.abs(noteTop - hitY);
+
+    if (noteLane === laneIndex && distance <= 50) {
+      let feedback = "Ok";
+      let points = 1;
+
+      if (distance <= 10) {
+        feedback = "Perfect";
+        points = 3;
+      } else if (distance <= 25) {
+        feedback = "Good";
+        points = 2;
+      }
+
+      score += points;
+      scoreDisplay.textContent = 'Score: ' + score;
+      let color = "#00ffD0"; // Default (Ok)
+        if (feedback === "Perfect") color = "#FFC300";
+        else if (feedback === "Good") color = "#00ffD0";
+        else if (feedback === "Ok") color = "#43C450"; // orange
+
+        showFeedback(feedback, color);
+
+
+      note.remove();
+      activeNotes.splice(i, 1);
+      return true;
+    }
+  }
+
+  showFeedback("Miss", "#f00");
+  return false;
+}
+
+
+  function createNote() {
+    const note = document.createElement('div');
+    note.classList.add('note');
+
+    const laneIndex = Math.floor(Math.random() * 4);
+    note.dataset.lane = laneIndex;
+    note.style.left = laneIndex * laneWidth + laneWidth / 2 - 15 + 'px';
+    note.style.top = '-30px';
+
+    gameContainer.appendChild(note);
+    activeNotes.push(note);
+
+    const startTime = Date.now();
+
+    const fall = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / noteFallDuration;
+      if (progress >= 1) {
+        note.remove();
+        const index = activeNotes.indexOf(note);
+        if (index !== -1) activeNotes.splice(index, 1);
+        clearInterval(fall);
+      } else {
+        note.style.top = progress * (hitY + 10) + 'px';
+      }
+    }, 16);
+  }
+
+  function startGame() {
+    const beatInterval = 600;
+
+    const beatTimer = setInterval(() => {
+      createNote();
+    }, beatInterval);
+
+    music.addEventListener('ended', () => {
+      clearInterval(beatTimer);
+    });
+  }
+
+  setTimeout(() => {
+    music.play();
+    startGame();
+  }, spawnOffset);
+</script>
+
+</body>
+</html>
