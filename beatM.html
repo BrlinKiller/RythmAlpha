@@ -22,11 +22,22 @@
         justify-content: center;
         align-items: center;
         height: 100vh;
-        background-color: black;
-        background-image: var(--Background-image);
+        background-color: rgb(0, 0, 0);
+        background-image: 
+        linear-gradient(
+            to right, 
+            transparent, 
+            /* Start transition 5% before the final black area (45%) */
+            rgba(0, 0, 0, 0) calc(100% - 5%), 
+            /* Solid black starts at the 50% mark */
+            rgb(0, 0, 0)
+        ),
+        var(--Background-image);
         /* CRITICAL: These specific values must be replicated */
-        background-position: -55vw -28vh;
-        background-size: 150vw;
+        background-position-x: calc(-55vw - max(0px, (140vh * 1.25 - 140vw) * 0.6));; 
+        background-position-y: calc(40%); 
+        background-size:140.1% 140%,
+        max(140vw, calc(140vh + ((1/4) * 140vh))); 
         background-repeat: no-repeat;
         font-family: sans-serif;
     }
@@ -140,17 +151,26 @@
       z-index: 2;
     }
 
-    /* 🌟 UPDATED: Lane width is now 1/6 of the container 🌟 */
     .lane {
-      position: absolute;
-      bottom: 0;
-      /* Default width is for Normal (6 lanes) */
-      width: 16.666%; 
-      height: 100%;
-      text-align: center;
-      border-left: 0.18vh solid rgba(255,255,255,0.05);
-      transition: width 0.3s, left 0.3s; /* Smooth transitions for lane changes */
-    }
+    position: absolute;
+    bottom: 0;
+    /* Default width is for Normal (6 lanes) */
+    width: 16.666%; 
+    height: 100%;
+    text-align: center;
+    /* 🌟 CHANGE THIS LINE 🌟 */
+    border-left: 0.3vh solid rgba(255, 255, 255, 0.2); /* Increased thickness and opacity */
+    /* Remove the border from the first lane later to prevent an outer line */
+    transition: width 0.3s, left 0.3s; /* Smooth transitions for lane changes */
+    } 
+
+  /* 🌟 ADD THIS NEW RULE 🌟 */
+  /* This removes the left border from the very first lane (the 's' lane in normal mode, or the 'd' lane in easy mode) to prevent a line on the far left edge of the game container. */
+  #gameContainer.normal .lane.s,
+  #gameContainer.hard .lane.s,
+  #gameContainer.easy .lane.d {
+      border-left: none;
+  }
     
     /* Easy Mode (4 Lanes) overrides */
     #gameContainer.easy .lane {
@@ -192,7 +212,7 @@
     height: 100%;
     
     background-image: var(--Background-image);
-    background-size: 150vw;
+    background-size: max(140vw, 140vh);
     background-repeat: no-repeat;
     
     background-attachment: fixed;
