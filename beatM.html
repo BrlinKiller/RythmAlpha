@@ -3,110 +3,271 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rhythm Game Fixed</title>
+  <title>Rhythm Game Expanded</title>
   <style>
     :root {
+      /* Placeholder images */
       --game-image: url("https://t3.ftcdn.net/jpg/06/34/47/90/240_F_634479097_8OHalwLrsZ33B1iWNhtje6wkKQXIs31m.jpg");
-      --Background-image: url("https://i.redd.it/nvi8xoj2cx9e1.png")
+      --Background-image: url("https://i.redd.it/nvi8xoj2cx9e1.png");
     }
+
+    /* Base container dimensions for ratio calculation:
+    * Width: 400px (100% of gameContainer width)
+    * Height: 550px (100% of gameContainer height)
+    */
 
     body {
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-image: var(--Background-image);
-      background-position: center;
-      background-size: cover;
-      font-family: sans-serif;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: black;
+        background-image: var(--Background-image);
+        /* CRITICAL: These specific values must be replicated */
+        background-position: -55vw -28vh;
+        background-size: 150vw;
+        background-repeat: no-repeat;
+        font-family: sans-serif;
     }
+    #gameWrapper {
+        display: flex;
+        /* Aligns the control box and game container to the top */
+        align-items: flex-start; 
+        /* Adds a little space between the box and the container */
+        gap: 2vh; 
+    }
+
+    /* --- New Control Box Styling --- */
+    #controlBox {
+      position: relative;
+      height: 80vh;
+      width: 15vh; /* Roughly 1/3 the game container width */
+      background-color: rgba(0, 0, 0, 0.4); /* Reverting to original darker background */
+      border: 0.545vh solid #00c8ff;
+      border-left: none;
+      border-radius: 0 1.818vh 1.818vh 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      padding-left: 4vh;
+      margin-left: -5vh;
+      z-index: -2;
+    }
+
+    #controlBox .keyLabel {
+        position: static; /* Override absolute positioning */
+        transform: none; /* Override centering transform */
+        margin-bottom: 2vh;
+    }
+    
+    #difficultyDisplay {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 5vh;
+        font-family: monospace;
+        font-size: 2vh;
+        color: #fff;
+    }
+
+    .difficulty-label {
+        padding: 0.5vh 1vh;
+        margin: 0.5vh 0;
+        border-radius: 0.5vh;
+        transition: all 0.2s ease;
+        font-weight: bold;
+        opacity: 0.5;
+    }
+
+    .difficulty-label.active {
+        opacity: 1;
+        background-color: #22f0ff;
+        color: #000;
+        box-shadow: 0 0 1vh #22f0ff;
+    }
+    /* --- End Control Box Styling --- */
 
     #gameContainer {
-      position: relative;
-      width: 400px;
-      height: 550px;
-      background-color: #ff4ed353;
-      overflow: hidden;
-      border: 3px solid #00c8ff;
-      border-radius: 10px;
+        position: relative;
+        height: 80vh;
+        width: 58.18vh; 
+        background-color: #ff4ed353;
+        overflow: hidden;
+        border: 0.545vh solid #00c8ff;
+        border-radius: 1.818vh;
+        z-index: 1; 
     }
 
+    /* Lane width is now 100% / 6 = 16.666% */
     .note {
       position: absolute;
-      width: 30px;
-      height: 30px;
-      background-color: #FF5722;
       background-image: var(--game-image);
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
       border-radius: 50%;
-    }
+      width: 5vh;
+      height: 5vh;
+      background-color: #ff4ed3;
+      border-radius: 50%;
+      z-index: 2;
+      border: 0.5vh solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 0 1.5vh #ff4ed3, 0 0 3vh rgba(255, 78, 211, 0.6);
+      animation: pulseBorder 1.5s linear infinite, noteDrop 0.3s ease-in;
+      }
 
     .hitZone {
       position: absolute;
-      bottom: 90px;
+      bottom: 10.36vh; /* 90px / 550px * 100vh ≈ 16.36vh */
       width: 100%;
-      height: 40px;
-      border-top: 2px solid #ffffff00;
+      height: 7.27vh; /* 40px / 550px * 100vh ≈ 7.27vh */
+      border-top: 0.36vh solid #ffffff00;
       pointer-events: none;
+      z-index: 1; /* Ensure hitZone is above lanes */
+    }
+    
+    .hitZone::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 0.36vh;
+      background: rgb(0, 225, 255);
+      z-index: 2;
     }
 
+    /* 🌟 UPDATED: Lane width is now 1/6 of the container 🌟 */
     .lane {
       position: absolute;
       bottom: 0;
-      width: 25%;
+      /* Default width is for Normal (6 lanes) */
+      width: 16.666%; 
       height: 100%;
       text-align: center;
-      border-left: 1px solid rgba(255,255,255,0.05);
+      border-left: 0.18vh solid rgba(255,255,255,0.05);
+      transition: width 0.3s, left 0.3s; /* Smooth transitions for lane changes */
+    }
+    
+    /* Easy Mode (4 Lanes) overrides */
+    #gameContainer.easy .lane {
+        width: 25%;
+    }
+    #gameContainer.easy .lane.s,
+    #gameContainer.easy .lane.l {
+        display: none; /* Hide 's' and 'l' lanes */
+    }
+    #gameContainer.easy .lane.d { left: 0%; }
+    #gameContainer.easy .lane.f { left: 25%; }
+    #gameContainer.easy .lane.j { left: 50%; }
+    #gameContainer.easy .lane.k { left: 75%; }
+
+    /* Normal Mode (6 Lanes) */
+    #gameContainer.normal .lane.s { left: 0%; }
+    #gameContainer.normal .lane.d { left: 16.666%; }
+    #gameContainer.normal .lane.f { left: 33.333%; }
+    #gameContainer.normal .lane.j { left: 50%; }
+    #gameContainer.normal .lane.k { left: 66.666%; }
+    #gameContainer.normal .lane.l { left: 83.333%; }
+
+    /* Hard/Default Mode (6 Lanes) - same as normal, only speeds change in JS */
+    #gameContainer.hard .lane.s { left: 0%; }
+    #gameContainer.hard .lane.d { left: 16.666%; }
+    #gameContainer.hard .lane.f { left: 33.333%; }
+    #gameContainer.hard .lane.j { left: 50%; }
+    #gameContainer.hard .lane.k { left: 66.666%; }
+    #gameContainer.hard .lane.l { left: 83.333%; }
+
+    #gameContainer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    
+    background-image: var(--Background-image);
+    background-size: 150vw;
+    background-repeat: no-repeat;
+    
+    background-attachment: fixed;
+    filter: blur(8px);
+    z-index: -1;
+    
+    background-position: calc(-55vw) calc(-28vh); 
+    }
+    /* Key label styling remains the same... */
+    .keyLabel.shift {
+        background-color: #1e8098;
+        font-size: 2vh;
+        text-align: center;
+        padding: 0vh 4vh;
+        margin: 0.5vh 0;
+        border-radius: 0.5vh;
+        font-family: monospace;
+        font-style: italic;
+    }
+    .keyLabel.shift.active {
+        background-color: #00ffff;
+        box-shadow: 0 0 2.727vh #00ffff;
     }
 
-    .lane.d { left: 0%; }
-    .lane.f { left: 25%; }
+    /* 🌟 UPDATED: Lane positions for 6 lanes 🌟 */
+    .lane.s { left: 0%; }
+    .lane.d { left: 16.666%; }
+    .lane.f { left: 33.333%; }
     .lane.j { left: 50%; }
-    .lane.k { left: 75%; }
+    .lane.k { left: 66.666%; }
+    .lane.l { left: 83.333%; }
+
 
     .keyLabel {
       position: absolute;
-      bottom: 10px;
+      bottom: 1.818vh;
       left: 50%;
       transform: translateX(-50%);
-      width: 30px;
-      height: 30px;
+      width: 5.454vh;
+      height: 5.454vh;
       background-color: #981e8a;
       color: white;
       font-weight: bold;
-      font-size: 16px;
-      line-height: 30px;
-      border-radius: 5px;
-      box-shadow: 0 0 4px #360045;
+      font-size: 2.909vh;
+      line-height: 5.454vh;
+      border-radius: 0.909vh;
+      box-shadow: 0 0 0.727vh #360045;
       transition: 0.1s ease;
+      z-index: 10; /* Ensure key labels are on top */
     }
 
     .keyLabel.active {
       background-color: #22f0ff;
-      box-shadow: 0 0 15px #22f0ff;
+      box-shadow: 0 0 2.727vh #22f0ff;
       transform: translateX(-50%) scale(1.1);
     }
 
     #score {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 1.818vh;
+      left: 1.818vh;
       color: #00ffff;
       font-family: monospace;
-      font-size: 20px;
+      font-size: 3.636vh;
       font-style: italic;
+      z-index: 3;
     }
 
     .feedback {
       position: absolute;
       left: 50%;
-      bottom: 120px;
+      bottom: 21.818vh;
       transform: translateX(-50%);
       color: #fff;
-      font-size: 24px;
+      font-size: 4.363vh;
       font-weight: bold;
       opacity: 0;
       animation: pop 0.6s ease-out;
@@ -116,204 +277,374 @@
     }
 
     @keyframes pop {
-      0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      0% { opacity: 0; transform: translateX(-50%) translateY(3.636vh); }
       30% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-3.636vh); }
     }
-    .hitZone {
-  position: absolute;
-  bottom: 90px; /* This is your actual hit Y */
-  width: 100%;
-  height: 50px; /* Match max hit buffer (50px) */
-  pointer-events: none;
-  z-index: 1;
-}
 
-.hitZone::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  height: 2px;
-  background: rgb(0, 225, 255); /* The hit line */
-  z-index: 2;
-}
+    @keyframes pulseBorder {
+    0% {
+      border-width: 0.5vh;
+      box-shadow:
+        0 0 1.5vh #ff4ed3,
+        0 0 3vh rgba(255, 78, 211, 0.6);
+    }
+    80% {
+      border-width: 0.1vh;
+      box-shadow:
+        0 0 0.5vh #ff4ed3,
+        0 0 1vh rgba(255, 78, 211, 0.3);
+    }
+    100% {
+      border-width: 0.5vh;
+      box-shadow:
+        0 0 1.5vh #ff4ed3,
+        0 0 3vh rgba(255, 78, 211, 0.6);
+    }
+  }
 
-.hitRange {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to top,
-    rgba(0, 217, 255, 0.852) 0%,       /* 0px = Miss */
-    rgba(0, 217, 255, 0.498) 50%,    /* 25px = Ok */
-    rgba(0, 217, 255, 0.317) 75%,    /* 12.5px = Good */
-    rgba(255, 0, 0, 0) 100%);    /* 0px = Perfect */
-  pointer-events: none;
-  z-index: 0;
-}
+
+    /* The original hitZone has been merged and updated */
+
+    .hitRange {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to top,
+        rgba(0, 217, 255, 0.852) 0%,
+        rgba(0, 217, 255, 0.498) 50%,
+        rgba(0, 217, 255, 0.317) 75%,
+        rgba(255, 0, 0, 0) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .ControlBoxText{
+      text-align: center;
+      color: white;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 2.3vh;
+    }
 
   </style>
 </head>
 <body>
-  <div id="gameContainer">
-    <div id="score">Score: 0</div>
-    <div class="hitZone">
-        <div class="hitRange"></div>
-    </div>
+  <div id="gameWrapper">
+    
+    <div id="gameContainer">
+        <div id="score">Score: 0</div>
+        <div class="hitZone">
+          <div class="hitRange"></div>
+        </div>
 
-    <!-- Lanes in correct order: D F J K -->
-    <div class="lane d">
-      <div class="keyLabel" id="key-d">D</div>
+        <div class="lane s">
+          <div class="keyLabel" id="key-s">S</div>
+        </div>
+        <div class="lane d">
+          <div class="keyLabel" id="key-d">D</div>
+        </div>
+        <div class="lane f">
+          <div class="keyLabel" id="key-f">F</div>
+        </div>
+        <div class="lane j">
+          <div class="keyLabel" id="key-j">J</div>
+        </div>
+        <div class="lane k">
+          <div class="keyLabel" id="key-k">K</div>
+        </div>
+        <div class="lane l">
+          <div class="keyLabel" id="key-l">L</div>
+        </div>
     </div>
-    <div class="lane f">
-      <div class="keyLabel" id="key-f">F</div>
-    </div>
-    <div class="lane j">
-      <div class="keyLabel" id="key-j">J</div>
-    </div>
-    <div class="lane k">
-      <div class="keyLabel" id="key-k">K</div>
+    <div id="controlBox">
+        <div class="ControlBoxText">CHANGE DIFFICULTY</div>
+        <div class="keyLabel shift" id="key-shift">SHIFT</div>
+        
+        <div id="difficultyDisplay">
+            <div class="difficulty-label" data-diff="easy" id="diff-easy">EASY (4)</div>
+            <div class="difficulty-label active" data-diff="normal" id="diff-normal">NORMAL (6)</div>
+            <div class="difficulty-label" data-diff="hard" id="diff-hard">HARD (6)</div>
+        </div>
     </div>
   </div>
 
   <audio id="music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
 
   <script>
-  const gameContainer = document.getElementById('gameContainer');
-  const scoreDisplay = document.getElementById('score');
-  const music = document.getElementById('music');
+    const gameWrapper = document.getElementById('gameWrapper');
+    const gameContainer = document.getElementById('gameContainer');
+    const scoreDisplay = document.getElementById('score');
+    const music = document.getElementById('music');
+    const difficultyLabels = document.querySelectorAll('.difficulty-label');
 
-  const keyMap = {
-    'd': 0,
-    'f': 1,
-    'j': 2,
-    'k': 3
-  };
+    // -----------------------------------------------------
+    // DIFFICULTY SETTINGS
+    // -----------------------------------------------------
+    const difficultyLevels = {
+        easy: {
+            lanes: 4,
+            beatInterval: 1200, // Slower beat
+            spawnDelayMax: 500,
+            keyMap: { 'd': 0, 'f': 1, 'j': 2, 'k': 3 }
+        },
+        normal: {
+            lanes: 6,
+            beatInterval: 1200,
+            spawnDelayMax: 500,
+            keyMap: { 's': 0, 'd': 1, 'f': 2, 'j': 3, 'k': 4, 'l': 5 }
+        },
+        hard: {
+            lanes: 6,
+            beatInterval: 600, // Faster beat
+            spawnDelayMax: 10,  // Faster simultaneous spawning
+            keyMap: { 's': 0, 'd': 1, 'f': 2, 'j': 3, 'k': 4, 'l': 5 }
+        }
+    };
+    
+    let currentDifficulty = 'normal';
+    let gameParams = difficultyLevels[currentDifficulty];
+    let beatTimer = null; // Reference to the main beat interval
 
-  const laneWidth = gameContainer.clientWidth / 4;
-  const containerHeight = gameContainer.clientHeight;
-  const hitY = containerHeight - 90;
-  const noteFallDuration = 2000;
-  const spawnOffset = noteFallDuration;
-  const activeNotes = [];
-  let score = 0;
+    // --- Dynamic Variables ---
+    let laneWidth = 0;
+    let containerHeight = 0;
+    let hitY = 0;
+    let noteSize = 0;
 
-  const keyCooldowns = {};
+    let hitRangePerfect = 0;
+    let hitRangeGood = 0;
+    let hitRangeOk = 0;
 
-  function showFeedback(text, color = "#fff") {
-    const fb = document.createElement("div");
-    fb.className = "feedback";
-    fb.innerText = text;
-    fb.style.color = color;
-    gameContainer.appendChild(fb);
-    setTimeout(() => fb.remove(), 600);
-  }
+    const noteFallDuration = 2000;
+    const spawnOffset = noteFallDuration;
+    const activeNotes = [];
+    let score = 0;
+    const keyCooldowns = {};
 
-  document.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
-    if (!(key in keyMap)) return;
-    if (keyCooldowns[key]) return;
+    function updateDifficulty(newDifficulty) {
+        if (newDifficulty === currentDifficulty) return;
+        
+        currentDifficulty = newDifficulty;
+        gameParams = difficultyLevels[newDifficulty];
 
-    keyCooldowns[key] = true;
-    const btn = document.getElementById('key-' + key);
-    if (btn) btn.classList.add('active');
+        // 1. Update CSS class for lane visibility/width
+        gameContainer.className = '';
+        gameContainer.classList.add(newDifficulty);
 
-    const result = checkHit(keyMap[key]);
+        // 2. Update display highlight
+        difficultyLabels.forEach(label => {
+            label.classList.remove('active');
+            if (label.dataset.diff === newDifficulty) {
+                label.classList.add('active');
+            }
+        });
 
-    if (!result) showFeedback("Miss", "#ff0048");
+        // 3. Recalculate dimensions (crucial for laneWidth update)
+        setDynamicDimensions();
 
-    setTimeout(() => {
-      keyCooldowns[key] = false;
-      if (btn) btn.classList.remove('active');
-    }, 150);
-  });
-
-  function checkHit(laneIndex) {
-  for (let i = 0; i < activeNotes.length; i++) {
-    const note = activeNotes[i];
-    const noteLane = parseInt(note.dataset.lane);
-    const noteTop = parseFloat(note.style.top);
-    const distance = Math.abs(noteTop - hitY);
-
-    if (noteLane === laneIndex && distance <= 50) {
-      let feedback = "Ok";
-      let points = 1;
-
-      if (distance <= 10) {
-        feedback = "Perfect";
-        points = 3;
-      } else if (distance <= 25) {
-        feedback = "Good";
-        points = 2;
-      }
-
-      score += points;
-      scoreDisplay.textContent = 'Score: ' + score;
-      let color = "#00ffD0"; // Default (Ok)
-        if (feedback === "Perfect") color = "#FFC300";
-        else if (feedback === "Good") color = "#00ffD0";
-        else if (feedback === "Ok") color = "#43C450"; // orange
-
-        showFeedback(feedback, color);
-
-
-      note.remove();
-      activeNotes.splice(i, 1);
-      return true;
+        // 4. Restart the music/game loop with new parameters
+        if (beatTimer) {
+            clearInterval(beatTimer);
+            music.currentTime = 0; // Reset music
+            music.pause();
+            
+            // Clear existing notes
+            activeNotes.forEach(note => note.remove());
+            activeNotes.length = 0; 
+            
+            // Restart game after a short delay
+            setTimeout(() => {
+                music.play();
+                startGameLoop(); // Only the loop, dimensions are set above
+            }, spawnOffset);
+        }
     }
-  }
 
-  showFeedback("Miss", "#f00");
-  return false;
-}
+    // Cycles the difficulty: easy -> normal -> hard -> easy
+    function cycleDifficulty() {
+        const diffs = ['easy', 'normal', 'hard'];
+        const currentIndex = diffs.indexOf(currentDifficulty);
+        const nextIndex = (currentIndex + 1) % diffs.length;
+        updateDifficulty(diffs[nextIndex]);
+    }
+    
+    function setDynamicDimensions() {
+        containerHeight = gameContainer.clientHeight;
+        // Lane width calculation must use the current number of lanes
+        laneWidth = gameContainer.clientWidth / gameParams.lanes;
 
+        const BASE_HEIGHT = 550;
+        const HIT_Y_FROM_BOTTOM_PX = 90;
+        hitY = containerHeight - HIT_Y_FROM_BOTTOM_PX * (containerHeight / BASE_HEIGHT);
 
-  function createNote() {
-    const note = document.createElement('div');
-    note.classList.add('note');
+        const NOTE_SIZE_PX = 30;
+        noteSize = NOTE_SIZE_PX * (containerHeight / BASE_HEIGHT);
 
-    const laneIndex = Math.floor(Math.random() * 4);
-    note.dataset.lane = laneIndex;
-    note.style.left = laneIndex * laneWidth + laneWidth / 2 - 15 + 'px';
-    note.style.top = '-30px';
+        hitRangePerfect = 10 * (containerHeight / BASE_HEIGHT);
+        hitRangeGood = 25 * (containerHeight / BASE_HEIGHT);
+        hitRangeOk = 50 * (containerHeight / BASE_HEIGHT);
+    }
 
-    gameContainer.appendChild(note);
-    activeNotes.push(note);
+    function showFeedback(text, color = "#fff") {
+        const fb = document.createElement("div");
+        fb.className = "feedback";
+        fb.innerText = text;
+        fb.style.color = color;
+        gameContainer.appendChild(fb);
+        setTimeout(() => fb.remove(), 600);
+    }
 
-    const startTime = Date.now();
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        
+        if (key === 'shift') {
+            const btn = document.getElementById('key-shift');
+            if (btn) btn.classList.add('active');
+            if (!keyCooldowns['shift']) {
+                cycleDifficulty();
+                keyCooldowns['shift'] = true;
+            }
+            return;
+        }
 
-    const fall = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = elapsed / noteFallDuration;
-      if (progress >= 1) {
-        note.remove();
-        const index = activeNotes.indexOf(note);
-        if (index !== -1) activeNotes.splice(index, 1);
-        clearInterval(fall);
-      } else {
-        note.style.top = progress * (hitY + 10) + 'px';
-      }
-    }, 16);
-  }
+        // Check against the current active key map
+        if (!(key in gameParams.keyMap)) return;
+        if (keyCooldowns[key]) return;
 
-  function startGame() {
-    const beatInterval = 600;
+        keyCooldowns[key] = true;
+        const btn = document.getElementById('key-' + key);
+        if (btn) btn.classList.add('active');
 
-    const beatTimer = setInterval(() => {
-      createNote();
-    }, beatInterval);
+        // checkHit uses the lane index from the current keyMap
+        checkHit(gameParams.keyMap[key]);
 
-    music.addEventListener('ended', () => {
-      clearInterval(beatTimer);
+        setTimeout(() => {
+            keyCooldowns[key] = false;
+            if (btn) btn.classList.remove('active');
+        }, 150);
     });
-  }
 
-  setTimeout(() => {
-    music.play();
+    document.addEventListener('keyup', (e) => {
+        if (e.key.toLowerCase() === 'shift') {
+            const btn = document.getElementById('key-shift');
+            if (btn) btn.classList.remove('active');
+            keyCooldowns['shift'] = false; // Reset cooldown on keyup
+        }
+    });
+
+    function checkHit(laneIndex) {
+        let hit = false;
+        // Search notes in reverse so removing them doesn't affect the loop index
+        for (let i = activeNotes.length - 1; i >= 0; i--) {
+            const note = activeNotes[i];
+            const noteLane = parseInt(note.dataset.lane);
+            const noteTop = parseFloat(note.style.top);
+            const distance = Math.abs(noteTop - hitY);
+
+            // Crucial: This check ensures we only check the active lanes
+            if (noteLane === laneIndex && distance <= hitRangeOk) {
+                let feedback = "Ok";
+                let points = 1;
+                let color = "#43C450";
+
+                if (distance <= hitRangePerfect) {
+                    feedback = "Perfect";
+                    points = 3;
+                    color = "#FFC300";
+                } else if (distance <= hitRangeGood) {
+                    feedback = "Good";
+                    points = 2;
+                    color = "#00ffD0";
+                }
+
+                score += points;
+                scoreDisplay.textContent = 'Score: ' + score;
+                showFeedback(feedback, color);
+
+                note.remove();
+                activeNotes.splice(i, 1);
+                hit = true;
+                break;
+            }
+        }
+
+        if (!hit) {
+            showFeedback("Miss", "#ff0048");
+        }
+        return hit;
+    }
+
+
+    function createNote() {
+        const note = document.createElement('div');
+        note.classList.add('note');
+
+        // Only generate notes for the active lanes (e.g., 0-3 for Easy)
+        const laneIndex = Math.floor(Math.random() * gameParams.lanes);
+        note.dataset.lane = laneIndex;
+
+        // Position based on lane width (which is dynamically updated)
+        note.style.left = laneIndex * laneWidth + laneWidth / 2 - noteSize / 2 + 'px';
+        note.style.top = '-' + noteSize + 'px';
+
+        gameContainer.appendChild(note);
+        activeNotes.push(note);
+
+        const startTime = Date.now();
+
+        const fall = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / noteFallDuration;
+
+            if (progress >= 1) {
+                note.remove();
+                const index = activeNotes.indexOf(note);
+                if (index !== -1) activeNotes.splice(index, 1);
+                clearInterval(fall);
+            } else {
+                note.style.top = progress * (hitY + noteSize) + 'px';
+            }
+        }, 16);
+    }
+
+    function startGameLoop() {
+        // Clear previous timer if exists
+        if (beatTimer) clearInterval(beatTimer);
+
+        beatTimer = setInterval(() => {
+            // Randomly choose notes to spawn, adjusted for difficulty
+            const notesToSpawn = Math.random() < 0.2 ? 2 : (Math.random() < 0.1 ? 3 : 1);
+            
+            for (let i = 0; i < notesToSpawn; i++) {
+                // Spawn delay uses the current difficulty setting
+                const spawnDelay = Math.random() * 30 + gameParams.spawnDelayMax;
+                setTimeout(createNote, spawnDelay * i);
+            }
+            
+        }, gameParams.beatInterval); // Uses current difficulty beat interval
+
+        music.addEventListener('ended', () => {
+            clearInterval(beatTimer);
+        });
+    }
+
+    // Initial setup
+    function startGame() {
+        // Set initial difficulty class and dimensions
+        gameContainer.classList.add(currentDifficulty);
+        setDynamicDimensions();
+        
+        window.addEventListener('resize', setDynamicDimensions);
+
+        setTimeout(() => {
+            music.play();
+            startGameLoop();
+        }, spawnOffset);
+    }
+    
+    // Start the game initialization
     startGame();
-  }, spawnOffset);
-</script>
-
+  </script>
 </body>
 </html>
